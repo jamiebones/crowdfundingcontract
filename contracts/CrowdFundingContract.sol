@@ -4,40 +4,32 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract CrowdFundingContract is Initializable, Ownable {
+import "hardhat/console.sol";
+
+contract CrowdFundingContract is Initializable {
     bool public campaignEnded;
-    address payable public campaignOwner;
-    bytes32 public fundingId;
+    address payable private _campaignOwner;
+    string public fundingId;
     uint256 public targetAmount;
     uint256 public campaignDuration;
-    uint256 public amountDonated;
+    uint256 private _amountDonated;
 
     mapping(address => uint256) public donors;
-
-    event createNewFundingContract(
-        bytes32 indexed fundingId,
-        uint256 targetAmount,
-        address indexed owner,
-        uint256 duration
-    );
-
     event fundsDonated(address indexed donor, uint256 amount, uint256 date);
+    event fundsWithdrawn(address indexed owner, uint256 amount, uint256 date);
+
+   
 
     function initialize(
-        bytes32 _fundingId,
+        string calldata _fundingId,
         uint256 _amount,
         uint256 _duration
     ) external initializer {
-        campaignOwner = payable(msg.sender);
+ 
+        _campaignOwner = payable(tx.origin);
         fundingId = _fundingId;
         targetAmount = _amount;
         campaignDuration = _duration;
-        emit createNewFundingContract(
-            fundingId,
-            targetAmount,
-            msg.sender,
-            campaignDuration
-        );
     }
 
     function makeDonation() public payable {
@@ -45,17 +37,28 @@ contract CrowdFundingContract is Initializable, Ownable {
         require(!campaignEnded, "campaign ended");
         require(funds > 0, "You did not donate");
         donors[msg.sender] += funds;
-        amountDonated += funds;
+        _amountDonated += funds;
         emit fundsDonated(msg.sender, funds, block.timestamp);
     }
 
-    function withdrawCampaignFunds() public onlyOwner {
+    function withdrawCampaignFunds() public {
         require(block.timestamp > campaignDuration, "campaign still running");
         require(address(this).balance > 0, "nothing to withdraw");
+        require(payable(msg.sender) == _campaignOwner, "you not the owner");
         require(!campaignEnded, "campaign ended");
+        uint256 amountToWithdraw = address(this).balance;
         campaignEnded = true;
-        (bool success, ) = campaignOwner.call{value: address(this).balance}("");
+        (bool success, ) = _campaignOwner.call{value: amountToWithdraw}("");
         require(success, "withdrawal failed");
+        emit fundsWithdrawn(msg.sender, amountToWithdraw, block.timestamp );
+    }
+
+    function getDonation() public view returns (uint256){
+        return _amountDonated;
+    }
+
+    function campaignOwner() public view returns ( address payable) {
+        return _campaignOwner;
     }
 
     receive() external payable {}

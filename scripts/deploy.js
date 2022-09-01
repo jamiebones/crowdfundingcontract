@@ -1,30 +1,23 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
+
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+  //deploy the crowd funding contract implementation 
+  const CrowdFundingImplementation = await hre.ethers.getContractFactory("CrowdFundingContract");
+  console.log("deploying the implementation contract")
+  const crowdFundingImplementation = await CrowdFundingImplementation.deploy();
+  await crowdFundingImplementation.deployed();
+  console.log("deployed the implementation contract with address : ", crowdFundingImplementation.address);
+  //create the factory contract
+  const CrowdFundingFactory = await hre.ethers.getContractFactory("CrowdSourcingFactory");
+  
+  const crowdFundingFactory = await CrowdFundingFactory.deploy(crowdFundingImplementation.address);
+  console.log("deployed the factory contract");
+  await crowdFundingFactory.deployed();
+  console.log("deployed the factory contract with address ", crowdFundingFactory.address);
 
-  const lockedAmount = hre.ethers.utils.parseEther("1");
-
-  const Lock = await hre.ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-
-  await lock.deployed();
-
-  console.log(
-    `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;

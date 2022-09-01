@@ -8,37 +8,51 @@ import "./CrowdFundingContract.sol";
 contract CrowdSourcingFactory is Ownable {
     //state variables;
     address immutable crowdFundingImplementation;
-    address[] public deployedContracts;
+    address[] public _deployedContracts;
     uint256 public fundingFee = 0.001 ether;
 
     //events
-    event newCrowdFundingCreated(address indexed owner, uint256 amount);
+    event newCrowdFundingCreated(
+        address indexed owner,
+        uint256 amount,
+        address cloneAddress
+    );
 
-    constructor() {
-        crowdFundingImplementation = address(new CrowdFundingContract());
+    constructor(address _implementation) {
+        crowdFundingImplementation = _implementation;
     }
 
     function createCrowdFundingContract(
-        bytes32 _fundingId,
+        string memory _fundingId,
         uint256 _amount,
         uint256 _duration
     ) external payable returns (address) {
         require(msg.value >= fundingFee, "deposit too small");
         address clone = Clones.clone(crowdFundingImplementation);
-        CrowdFundingContract(payable(clone)).initialize(
-            _fundingId,
-            _amount,
-            _duration
+        (bool success, ) = clone.call(
+            abi.encodeWithSignature(
+                "initialize(string,uint256,uint256)",
+                _fundingId,
+                _amount,
+                _duration
+            )
         );
-        deployedContracts.push(clone);
-        emit newCrowdFundingCreated(msg.sender, fundingFee);
+        require(success, "creation failed");
+
+        _deployedContracts.push(clone);
+        emit newCrowdFundingCreated(msg.sender, fundingFee, clone);
         return clone;
     }
 
     function withdrawFunds() public onlyOwner {
         uint256 balance = address(this).balance;
+        require(balance > 0, "nothing to withdraw");
         (bool success, ) = payable(msg.sender).call{value: balance}("");
         require(success, "withdrawal failed");
+    }
+
+    function deployedContracts() public view returns (address[] memory) {
+        return _deployedContracts;
     }
 
     receive() external payable {}
