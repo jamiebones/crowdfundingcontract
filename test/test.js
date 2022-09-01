@@ -16,7 +16,7 @@ describe("CrowdFunding", function () {
     const ONE_ETH = 1_000_000_000_000_000_000;
 
     const deposit = ONE_ETH * 0.001;
-    const amountToDeposit = ONE_ETH * 0.0000002;
+    const amountToDeposit = ethers.utils.parseEther("0.001");
     const futureTime = (await time.latest()) + ONE_YEAR_IN_SECS;
 
     let fundingId =
@@ -64,7 +64,7 @@ describe("CrowdFunding", function () {
         value: deposit,
       });
 
-    let waitTwo = await txn.wait();
+    let waitTwo = await txnTwo.wait();
     const cloneAddressTwo = waitTwo.events[1].args.cloneAddress;
 
     //load the clone
@@ -88,9 +88,7 @@ describe("CrowdFunding", function () {
     };
   }
 
-  describe("Deployment", function () {
-    beforeEach(async () => {});
-
+  describe("Contract Factory test suite", function () {
     it("Should create a clone contract and create a new campaign", async function () {
       const { contractFactory, otherAccount, deposit, futureTime, fundingId } =
         await loadFixture(setUpContractUtils);
@@ -106,6 +104,25 @@ describe("CrowdFunding", function () {
       expect(wait.events[1].args.cloneAddress).to.exist;
     });
 
+    it("Should show deployed contracts as two", async function () {
+      const { contractFactory } = await loadFixture(setUpContractUtils);
+      const deployedContracts = await contractFactory.deployedContracts();
+      expect(+deployedContracts.length).to.be.equal(2);
+    });
+
+    it("Should only allow the owner to withdraw", async function () {
+      const { contractFactory, owner } = await loadFixture(setUpContractUtils);
+
+      const balanceBefore = await hre.ethers.provider.getBalance(owner.address);
+      await contractFactory.connect(owner).withdrawFunds();
+      const balanceAfter = await hre.ethers.provider.getBalance(owner.address);
+      expect(+balanceAfter.toString()).to.be.greaterThan(
+        +balanceBefore.toString()
+      );
+    });
+  });
+
+  describe("Crowd funding test suite", function () {
     it("Should be able to make donation to a campaign", async function () {
       const { amountToDeposit, someOtherAccount, instanceOne } =
         await loadFixture(setUpContractUtils);
@@ -138,21 +155,66 @@ describe("CrowdFunding", function () {
       expect(owner).to.be.equal(otherAccount.address);
     });
 
-    it("Should show deployed contracts as two", async function () {
-      const { contractFactory } = await loadFixture(setUpContractUtils);
-      const deployedContracts = await contractFactory.deployedContracts();
-      expect(+deployedContracts.length).to.be.equal(2);
-    });
+    it("Should be able to withdraw the campaign funds", async function () {
+      const { otherAccount, instanceOne, amountToDeposit } = await loadFixture(
+        setUpContractUtils
+      );
 
-    it("Should only allow the owner to withdraw", async function () {
-      const { contractFactory, owner } = await loadFixture(setUpContractUtils);
+      await instanceOne
+        .connect(otherAccount)
+        .makeDonation({ value: amountToDeposit });
 
-      const balanceBefore = await hre.ethers.provider.getBalance(owner.address);
-      await contractFactory.connect(owner).withdrawFunds();
-      const balanceAfter = await hre.ethers.provider.getBalance(owner.address);
+      const balanceBefore = await hre.ethers.provider.getBalance(
+        otherAccount.address
+      );
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + 1756713021);
+
+      await instanceOne.connect(otherAccount).withdrawCampaignFunds();
+
+      const balanceAfter = await hre.ethers.provider.getBalance(
+        otherAccount.address
+      );
+
       expect(+balanceAfter.toString()).to.be.greaterThan(
         +balanceBefore.toString()
       );
+    });
+
+    it("Should not be able to withdraw be able the campaign funds", async function () {
+      const { otherAccount, instanceOne, amountToDeposit, owner } =
+        await loadFixture(setUpContractUtils);
+
+      await instanceOne
+        .connect(otherAccount)
+        .makeDonation({ value: amountToDeposit });
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + 1756713021);
+
+      await expect(
+        instanceOne.connect(owner).withdrawCampaignFunds()
+      ).to.be.revertedWith("you not the owner");
+    });
+
+    it("Should be able to get the number of unique donors", async function () {
+      const { instanceOne, amountToDeposit, otherAccount, someOtherAccount } =
+        await loadFixture(setUpContractUtils);
+
+      await instanceOne
+        .connect(otherAccount)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(someOtherAccount)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .makeDonation({ value: amountToDeposit });
+
+      expect(await instanceOne.numberOfDonors()).to.be.equal(2);
     });
   });
 });
