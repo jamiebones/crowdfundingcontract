@@ -14,11 +14,15 @@ async function main() {
   const crowdFundingFactory = await CrowdFundingFactory.deploy(crowdFundingImplementation.address);
   console.log("deployed the factory contract");
   await crowdFundingFactory.deployed();
-  console.log("deployed the factory contract with address ", crowdFundingFactory.address);
+  console.log("deployed the factory contract with to : ", crowdFundingFactory.address);
 
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error("There was an error",error);
   process.exitCode = 1;
 });
+
+
+//deployed the implementation contract with address :  0xd6591cFb3F6FF39DeF4aaA994b47e8a8883723b1
+//deployed the factory contract with to :  0xf8421c8a8Db350134c3FaB7Ab3eF1F1F1147425F

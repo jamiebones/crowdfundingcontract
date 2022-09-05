@@ -21,8 +21,18 @@ describe("CrowdFunding", function () {
 
     let fundingId =
       "bafybeibhwfzx6oo5rymsxmkdxpmkfwyvbjrrwcl7cekmbzlupmp5ypkyfi";
+    let milestoneCID =
+      "bafybeibhwfzx6oo5rymsxmkdxpmkfwyvbjrrwcl7cekmbzlupmp5ypkyfi";
     // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount, someOtherAccount] = await ethers.getSigners();
+    const [
+      owner,
+      otherAccount,
+      someOtherAccount,
+      accountOne,
+      accountTwo,
+      accountThree,
+      accountFour,
+    ] = await ethers.getSigners();
 
     //deploy the contracts here
     const CrowdFundingImplementation = await hre.ethers.getContractFactory(
@@ -85,6 +95,11 @@ describe("CrowdFunding", function () {
       amountToDeposit,
       instanceOne,
       instanceTwo,
+      milestoneCID,
+      accountOne,
+      accountTwo,
+      accountThree,
+      accountFour,
     };
   }
 
@@ -155,48 +170,48 @@ describe("CrowdFunding", function () {
       expect(owner).to.be.equal(otherAccount.address);
     });
 
-    it("Should be able to withdraw the campaign funds", async function () {
-      const { otherAccount, instanceOne, amountToDeposit } = await loadFixture(
-        setUpContractUtils
-      );
+    // it("Should be able to withdraw the campaign funds", async function () {
+    //   const { otherAccount, instanceOne, amountToDeposit } = await loadFixture(
+    //     setUpContractUtils
+    //   );
 
-      await instanceOne
-        .connect(otherAccount)
-        .makeDonation({ value: amountToDeposit });
+    //   await instanceOne
+    //     .connect(otherAccount)
+    //     .makeDonation({ value: amountToDeposit });
 
-      const balanceBefore = await hre.ethers.provider.getBalance(
-        otherAccount.address
-      );
+    //   const balanceBefore = await hre.ethers.provider.getBalance(
+    //     otherAccount.address
+    //   );
 
-      const latestTime = await time.latest();
-      await time.increaseTo(latestTime + 1756713021);
+    //   const latestTime = await time.latest();
+    //   await time.increaseTo(latestTime + 1756713021);
 
-      await instanceOne.connect(otherAccount).withdrawCampaignFunds();
+    //   await instanceOne.connect(otherAccount).withdrawCampaignFunds();
 
-      const balanceAfter = await hre.ethers.provider.getBalance(
-        otherAccount.address
-      );
+    //   const balanceAfter = await hre.ethers.provider.getBalance(
+    //     otherAccount.address
+    //   );
 
-      expect(+balanceAfter.toString()).to.be.greaterThan(
-        +balanceBefore.toString()
-      );
-    });
+    //   expect(+balanceAfter.toString()).to.be.greaterThan(
+    //     +balanceBefore.toString()
+    //   );
+    // });
 
-    it("Should not be able to withdraw be able the campaign funds", async function () {
-      const { otherAccount, instanceOne, amountToDeposit, owner } =
-        await loadFixture(setUpContractUtils);
+    // it("Should not be able to withdraw be able the campaign funds", async function () {
+    //   const { otherAccount, instanceOne, amountToDeposit, owner } =
+    //     await loadFixture(setUpContractUtils);
 
-      await instanceOne
-        .connect(otherAccount)
-        .makeDonation({ value: amountToDeposit });
+    //   await instanceOne
+    //     .connect(otherAccount)
+    //     .makeDonation({ value: amountToDeposit });
 
-      const latestTime = await time.latest();
-      await time.increaseTo(latestTime + 1756713021);
+    //   const latestTime = await time.latest();
+    //   await time.increaseTo(latestTime + 1756713021);
 
-      await expect(
-        instanceOne.connect(owner).withdrawCampaignFunds()
-      ).to.be.revertedWith("you not the owner");
-    });
+    //   await expect(
+    //     instanceOne.connect(owner).withdrawCampaignFunds()
+    //   ).to.be.revertedWith("you not the owner");
+    // });
 
     it("Should be able to get the number of unique donors", async function () {
       const { instanceOne, amountToDeposit, otherAccount, someOtherAccount } =
@@ -216,5 +231,575 @@ describe("CrowdFunding", function () {
 
       expect(await instanceOne.numberOfDonors()).to.be.equal(2);
     });
+    it("Should be to create a milestone", async function () {
+      const { instanceOne, otherAccount, milestoneCID } = await loadFixture(
+        setUpContractUtils
+      );
+
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      const milestone = await instanceOne.showCurrentMillestone();
+      const status = milestone.status;
+
+      expect(status).to.be.equal(2);
+    });
+
+    it("Should not be to create a milestone", async function () {
+      const { instanceOne, accountFour, milestoneCID } = await loadFixture(
+        setUpContractUtils
+      );
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+      await expect(
+        instanceOne
+          .connect(accountFour)
+          .creatNewMilestone(milestoneCID, votingPeriod)
+      ).to.be.revertedWith("you not the owner");
+    });
+
+    it("Should not be able to create a milestone", async function () {
+      const { instanceOne, otherAccount, milestoneCID } = await loadFixture(
+        setUpContractUtils
+      );
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await expect(
+        instanceOne
+          .connect(otherAccount)
+          .creatNewMilestone(milestoneCID, votingPeriod)
+      ).to.be.revertedWith("you have a pending milestone");
+    });
+    it("Should be able to vote on a milestone", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        someOtherAccount,
+        accountOne,
+        accountTwo,
+        accountThree,
+        accountFour,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+      const milestone = await instanceOne.showCurrentMillestone();
+
+      expect(+milestone.votes.length).to.be.equal(3);
+    });
+
+    it("Should not be able to vote on a milestone", async function () {
+      const { instanceOne, otherAccount, milestoneCID, accountOne } =
+        await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await expect(
+        instanceOne.connect(accountOne).voteOnMilestone(true)
+      ).to.be.revertedWith("you are not a donor");
+    });
+
+    it("Should not be able to vote twice on a milestone", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        accountThree,
+        amountToDeposit,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountThree).voteOnMilestone(true);
+
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const milestone = await instanceOne.showCurrentMillestone();
+
+      expect(+milestone.votes.length).to.be.equal(1);
+    });
+
+    it("Should not be able to withdraw milestone fund because voting period has not ended", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        someOtherAccount,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const balanceBefore = await hre.ethers.provider.getBalance(
+        otherAccount.address
+      );
+
+      await expect(
+        instanceOne.connect(otherAccount).withdrawMilestone()
+      ).to.be.revertedWith("voting still on");
+
+      const balanceAfter = await hre.ethers.provider.getBalance(
+        otherAccount.address
+      );
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + 1756713021);
+    });
+
+    it("Should be able to withdraw milestone fund stage one", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        someOtherAccount,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const latestTime = await time.latest();
+
+      await time.increaseTo(latestTime + 90000000000);
+
+      const balanceBefore = await instanceOne.etherBalance();
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      const balanceAfter = await instanceOne.etherBalance();
+
+      expect(+balanceBefore.toString()).to.be.greaterThan(
+        +balanceAfter.toString()
+      );
+    });
+
+    it("Should be able to withdraw milestone fund stage two", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        someOtherAccount,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      //   await time.increaseTo(latestTime + 1756713021);
+
+      const latestTime = await time.latest();
+
+      await time.increaseTo(latestTime + 90000000000);
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //create new milestone instance
+
+      const balanceBefore = await instanceOne.etherBalance();
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //second milestone withdrawal
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      const balanceAfter = await instanceOne.etherBalance();
+
+      expect(+balanceBefore.toString()).to.be.greaterThan(
+        +balanceAfter.toString()
+      );
+    });
+
+    it("Should be able to withdraw milestone fund stage three", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        someOtherAccount,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + 90000000000);
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //create new milestone instance
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //second milestone withdrawal
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //third milestone creation
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //third milestone withdrawal
+      const balanceBefore = await instanceOne.etherBalance();
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      const balanceAfter = await instanceOne.etherBalance();
+
+      expect(+balanceBefore.toString()).to.be.greaterThan(
+        +balanceAfter.toString()
+      );
+    });
+
+    it("Should no longer be able to create milestone after 3 withdrawals", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + 90000000000);
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //create new milestone instance
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //second milestone withdrawal
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //third milestone creation
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //third milestone withdrawal
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      await expect(
+        instanceOne
+          .connect(otherAccount)
+          .creatNewMilestone(milestoneCID, votingPeriod + 1000000)
+      ).to.be.rejectedWith("no more milestone to create");
+    });
+
+    it("Should no longer be able to donate after the 3 milestone withdrawal", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + 90000000000);
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //create new milestone instance
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //second milestone withdrawal
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //third milestone creation
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod + 1000000);
+
+      //third milestone withdrawal
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      await expect(
+        instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit })
+      ).to.be.rejectedWith("no longer taking donation");
+    });
+
+    it("created milestone fails insufficient vote", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(false);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + (3 * 24 * 60 * 60));
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+      
+      //get the milestone
+      const milestone = await instanceOne.showCurrentMillestone();
+
+      expect(milestone.status).to.be.equal(1);
+
+    });
+
+    it("created milestone should fails first and pass at the second creation", async function () {
+      const {
+        instanceOne,
+        otherAccount,
+        milestoneCID,
+        amountToDeposit,
+        accountOne,
+        accountTwo,
+        accountThree,
+      } = await loadFixture(setUpContractUtils);
+      const votingPeriod = (await time.latest()) + 2 * 24 * 60 * 60;
+
+      await instanceOne
+        .connect(accountOne)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountTwo)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(accountThree)
+        .makeDonation({ value: amountToDeposit });
+
+      await instanceOne
+        .connect(otherAccount)
+        .creatNewMilestone(milestoneCID, votingPeriod);
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(false);
+      await instanceOne.connect(accountThree).voteOnMilestone(false);
+
+      const latestTime = await time.latest();
+      await time.increaseTo(latestTime + (3 * 24 * 60 * 60));
+
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+
+      //create another milestone
+
+      await instanceOne
+      .connect(otherAccount)
+      .creatNewMilestone(milestoneCID, votingPeriod + (3 * 24 * 60 * 60));
+
+
+      await instanceOne.connect(accountOne).voteOnMilestone(true);
+      await instanceOne.connect(accountTwo).voteOnMilestone(true);
+      await instanceOne.connect(accountThree).voteOnMilestone(true);
+
+      
+      await time.increaseTo(latestTime + (30 * 24 * 60 * 60));
+
+      //withdraw now
+      await instanceOne.connect(otherAccount).withdrawMilestone();
+      
+      //get the milestone
+      const milestone = await instanceOne.showCurrentMillestone();
+
+      expect(milestone.status).to.be.equal(0);
+
+    });
+
   });
 });

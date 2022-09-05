@@ -3,7 +3,19 @@ require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
 module.exports = {
-  solidity: "0.8.9",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.0",
+      },
+      {
+        version: "0.8.2",
+      },
+      {
+        version: "0.8.1",
+      },
+    ],
+  },
   networks: {
     hardhat: {
       chainId: 1337,
@@ -15,5 +27,8 @@ module.exports = {
       gas: 2100000,
       gasPrice: 8000000000,
     },
+  },
+  etherscan: {
+    apiKey: process.env.POLY_SCAN,
   },
 };
