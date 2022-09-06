@@ -15,10 +15,11 @@ contract CrowdSourcingFactory is Ownable {
     event newCrowdFundingCreated(
         address indexed owner,
         uint256 amount,
-        address cloneAddress
+        address cloneAddress,
+        string fundingCID
     );
 
-    constructor(address _implementation) {
+    constructor(address _implementation) Ownable() {
         crowdFundingImplementation = _implementation;
     }
 
@@ -40,7 +41,7 @@ contract CrowdSourcingFactory is Ownable {
         require(success, "creation failed");
 
         _deployedContracts.push(clone);
-        emit newCrowdFundingCreated(msg.sender, fundingFee, clone);
+        emit newCrowdFundingCreated(msg.sender, fundingFee, clone, _fundingId);
         return clone;
     }
 

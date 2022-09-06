@@ -1,10 +1,8 @@
 //SPDX-License-Identifier:MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+//import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-
-
 
 enum MilestoneStatus {
     Approved,
@@ -53,6 +51,7 @@ contract CrowdFundingContract is Initializable {
         uint256 datecreated,
         uint256 period
     );
+    event milestoneRejected(uint yesvote, uint novote);
 
     function initialize(
         string calldata _fundingId,
@@ -105,6 +104,7 @@ contract CrowdFundingContract is Initializable {
         newmilestone.votingPeriod = votingPeriod;
         newmilestone.status = MilestoneStatus.Pending;
         newmilestone.votes.push(votes);
+        emit milestoneCreated(msg.sender, block.timestamp, votingPeriod);
     }
 
     function voteOnMilestone(bool vote) public {
@@ -173,19 +173,19 @@ contract CrowdFundingContract is Initializable {
         );
 
         //calculate the percentage
-        (, uint256 noVote) = _calculateTheVote(
+        (uint yesvote, uint256 novote) = _calculateTheVote(
             milestones[_milestoneCounter].votes
         );
 
         //calculate the vote percentage and make room for those that did not vote
-        uint256 totalYesVote = _numberOfDonors - noVote;
+        uint256 totalYesVote = _numberOfDonors - novote;
 
         //check if the yesVote is equal to 2/3 of the total votes
         uint256 voteCalculation = (2 * _numberOfDonors * _baseNumber) / 3;
         uint256 yesVoteCalculation = totalYesVote * _baseNumber;
 
         //check if the milestone passed 2/3
-        if (yesVoteCalculation >= voteCalculation ) {
+        if (yesVoteCalculation >= voteCalculation) {
             //the milestone succeds payout the money
             milestones[_milestoneCounter].approved = true;
             _numberOfWithdrawal++;
@@ -206,10 +206,16 @@ contract CrowdFundingContract is Initializable {
             }
 
             (bool success, ) = _campaignOwner.call{value: amountToWithdraw}("");
+            emit fundsWithdrawn(
+                _campaignOwner,
+                amountToWithdraw,
+                block.timestamp
+            );
             require(success, "withdrawal failed");
         } else {
             //the milestone failed
             milestones[_milestoneCounter].status = MilestoneStatus.Declined;
+            emit milestoneRejected(yesvote, novote);
         }
     }
 

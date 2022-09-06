@@ -3,7 +3,7 @@ const hre = require("hardhat");
 async function main() {
   //deploy the crowd funding contract implementation
 
-  const [deployer, address1, address2] = await hre.ethers.getSigners();
+  const [deployer, address1, address2, address3, address4] = await hre.ethers.getSigners();
 
   console.log(
     `deployer:${deployer.address} : address1:${address1.address} : address2:${address2.address}`
@@ -101,31 +101,87 @@ async function main() {
     wait.events[0].args
   );
 
-  // wait 10 years
-  await hre.network.provider.send("evm_increaseTime", [15778800000000]);
+  txn = await cloneFundingContractInstanceTwo
+  .connect(address2)
+  .makeDonation({ value: amountToDepositTwo });
 
-  //withdraw the donation made:
-  console.log("attempting to withdraw campaign funds");
-  txn = await cloneFundingContractInstance
-    .connect(address1)
-    .withdrawCampaignFunds();
   wait = await txn.wait();
   console.log(
-    "Funding Withdrawn from instance one:",
+    "Funds donated by address2:",
     wait.events[0].event,
     wait.events[0].args
   );
 
   txn = await cloneFundingContractInstanceTwo
-    .connect(address2)
-    .withdrawCampaignFunds();
-  wait = await txn.wait();
+  .connect(address3)
+  .makeDonation({ value: amountToDepositTwo });
 
+  wait = await txn.wait();
   console.log(
-    "Funding Withdrawn from instance two :",
+    "Funds donated by address3:",
     wait.events[0].event,
     wait.events[0].args
   );
+
+
+
+  //
+
+  txn = await cloneFundingContractInstanceTwo
+        .connect(address2)
+        .creatNewMilestone("hello from space", timestamp);
+
+  wait = await txn.wait();
+
+  console.log("milestone created ", wait.events[0].event, wait.events[0].args);
+
+  await cloneFundingContractInstanceTwo.connect(address1).voteOnMilestone(true);
+  await cloneFundingContractInstanceTwo.connect(address2).voteOnMilestone(true);
+  await cloneFundingContractInstanceTwo.connect(address3).voteOnMilestone(false);
+
+  console.log("finish voting on the milestone");
+
+  // wait 10 years
+  await hre.network.provider.send("evm_increaseTime", [15778800000000]);
+
+
+  //withdraw the milestone
+
+  txn  = await cloneFundingContractInstanceTwo.connect(address2).withdrawMilestone();
+  wait = await txn.wait();
+
+  console.log(
+    "Milestone withdrawn",
+    wait.events[0].event,
+    wait.events[0].args
+  );
+
+  txn = await cloneFundingContractInstanceTwo
+  .connect(address2)
+  .creatNewMilestone("hello from space again", timestamp);
+
+  wait = await txn.wait();
+  console.log("second milestone created");
+
+
+  await cloneFundingContractInstanceTwo.connect(address1).voteOnMilestone(true);
+  await cloneFundingContractInstanceTwo.connect(address2).voteOnMilestone(false);
+  await cloneFundingContractInstanceTwo.connect(address3).voteOnMilestone(false);
+  
+  console.log("voting ended on second milestone");
+
+   // wait 10 years
+   await hre.network.provider.send("evm_increaseTime", [16778800000000]);
+  //withdraw the second milestone
+  txn  = await cloneFundingContractInstanceTwo.connect(address2).withdrawMilestone();
+  wait = await txn.wait();
+
+  console.log(
+    "Milestone declined event",
+    wait.events[0].event,
+    wait.events[0].args
+  );
+
 
   //owner of factory withdrawing his money
   txn = await crowdFundingFactory.connect(deployer).withdrawFunds();
