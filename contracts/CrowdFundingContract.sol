@@ -13,7 +13,7 @@ enum MilestoneStatus {
 contract CrowdFundingContract is Initializable {
     bool public campaignEnded;
     address payable private _campaignOwner;
-    string public fundingId;
+    string public fundingCId;
     uint256 public targetAmount;
     uint256 public campaignDuration;
     uint256 private _amountDonated;
@@ -24,7 +24,6 @@ contract CrowdFundingContract is Initializable {
 
     uint256 constant _baseNumber = 10**18;
 
-    address constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
     MilestoneStatus status;
 
@@ -54,12 +53,12 @@ contract CrowdFundingContract is Initializable {
     event milestoneRejected(uint yesvote, uint novote);
 
     function initialize(
-        string calldata _fundingId,
+        string calldata _fundingCId,
         uint256 _amount,
         uint256 _duration
     ) external initializer {
         _campaignOwner = payable(tx.origin);
-        fundingId = _fundingId;
+        fundingCId = _fundingCId;
         targetAmount = _amount;
         campaignDuration = _duration;
     }
@@ -95,15 +94,12 @@ contract CrowdFundingContract is Initializable {
         //create a new milestone increment the milestonecounter
         _milestoneCounter++;
 
-        //initialize the votes array
-        MilestoneVote memory votes;
         //voting period for a minimum of 2 weeks before the proposal fails or passes
         Milestone storage newmilestone = milestones[_milestoneCounter];
         newmilestone.milestoneCID = milestoneCID;
         newmilestone.approved = false;
         newmilestone.votingPeriod = votingPeriod;
         newmilestone.status = MilestoneStatus.Pending;
-        newmilestone.votes.push(votes);
         emit milestoneCreated(msg.sender, block.timestamp, votingPeriod);
     }
 
@@ -140,17 +136,8 @@ contract CrowdFundingContract is Initializable {
             //construct the user vote
             userVote.donorAddress = msg.sender;
             userVote.vote = vote;
-            if (
-                milestoneVoteArrayLength == 1 &&
-                milestones[_milestoneCounter].votes[0].donorAddress ==
-                ADDRESS_ZERO
-            ) {
-                //check if the first element is the one with one address;
-                //replace the initialization struct
-                milestones[_milestoneCounter].votes[0] = userVote;
-            } else {
-                milestones[_milestoneCounter].votes.push(userVote);
-            }
+            milestones[_milestoneCounter].votes.push(userVote);
+            
         }
     }
 
@@ -181,11 +168,11 @@ contract CrowdFundingContract is Initializable {
         uint256 totalYesVote = _numberOfDonors - novote;
 
         //check if the yesVote is equal to 2/3 of the total votes
-        uint256 voteCalculation = (2 * _numberOfDonors * _baseNumber) / 3;
+        uint256 twoThirdofTotal = (2 * _numberOfDonors * _baseNumber) / 3;
         uint256 yesVoteCalculation = totalYesVote * _baseNumber;
 
         //check if the milestone passed 2/3
-        if (yesVoteCalculation >= voteCalculation) {
+        if (yesVoteCalculation >= twoThirdofTotal) {
             //the milestone succeds payout the money
             milestones[_milestoneCounter].approved = true;
             _numberOfWithdrawal++;
@@ -203,15 +190,17 @@ contract CrowdFundingContract is Initializable {
             } else {
                 //final withdrawal
                 amountToWithdraw = contractBalance;
+                campaignEnded = true;
             }
 
             (bool success, ) = _campaignOwner.call{value: amountToWithdraw}("");
+            require(success, "withdrawal failed");
             emit fundsWithdrawn(
                 _campaignOwner,
                 amountToWithdraw,
                 block.timestamp
             );
-            require(success, "withdrawal failed");
+            
         } else {
             //the milestone failed
             milestones[_milestoneCounter].status = MilestoneStatus.Declined;

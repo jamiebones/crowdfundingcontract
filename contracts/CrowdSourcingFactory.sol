@@ -24,7 +24,7 @@ contract CrowdSourcingFactory is Ownable {
     }
 
     function createCrowdFundingContract(
-        string memory _fundingId,
+        string memory _fundingCId,
         uint256 _amount,
         uint256 _duration
     ) external payable returns (address) {
@@ -33,7 +33,7 @@ contract CrowdSourcingFactory is Ownable {
         (bool success, ) = clone.call(
             abi.encodeWithSignature(
                 "initialize(string,uint256,uint256)",
-                _fundingId,
+                _fundingCId,
                 _amount,
                 _duration
             )
@@ -41,7 +41,7 @@ contract CrowdSourcingFactory is Ownable {
         require(success, "creation failed");
 
         _deployedContracts.push(clone);
-        emit newCrowdFundingCreated(msg.sender, fundingFee, clone, _fundingId);
+        emit newCrowdFundingCreated(msg.sender, fundingFee, clone, _fundingCId);
         return clone;
     }
 

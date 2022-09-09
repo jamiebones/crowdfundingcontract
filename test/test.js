@@ -693,7 +693,7 @@ describe("CrowdFunding", function () {
         instanceOne
         .connect(accountTwo)
         .makeDonation({ value: amountToDeposit })
-      ).to.be.rejectedWith("no longer taking donation");
+      ).to.be.rejectedWith("campaign ended");
     });
 
     it("created milestone fails insufficient vote", async function () {
