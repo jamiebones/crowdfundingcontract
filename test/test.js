@@ -170,49 +170,6 @@ describe("CrowdFunding", function () {
       expect(owner).to.be.equal(otherAccount.address);
     });
 
-    // it("Should be able to withdraw the campaign funds", async function () {
-    //   const { otherAccount, instanceOne, amountToDeposit } = await loadFixture(
-    //     setUpContractUtils
-    //   );
-
-    //   await instanceOne
-    //     .connect(otherAccount)
-    //     .makeDonation({ value: amountToDeposit });
-
-    //   const balanceBefore = await hre.ethers.provider.getBalance(
-    //     otherAccount.address
-    //   );
-
-    //   const latestTime = await time.latest();
-    //   await time.increaseTo(latestTime + 1756713021);
-
-    //   await instanceOne.connect(otherAccount).withdrawCampaignFunds();
-
-    //   const balanceAfter = await hre.ethers.provider.getBalance(
-    //     otherAccount.address
-    //   );
-
-    //   expect(+balanceAfter.toString()).to.be.greaterThan(
-    //     +balanceBefore.toString()
-    //   );
-    // });
-
-    // it("Should not be able to withdraw be able the campaign funds", async function () {
-    //   const { otherAccount, instanceOne, amountToDeposit, owner } =
-    //     await loadFixture(setUpContractUtils);
-
-    //   await instanceOne
-    //     .connect(otherAccount)
-    //     .makeDonation({ value: amountToDeposit });
-
-    //   const latestTime = await time.latest();
-    //   await time.increaseTo(latestTime + 1756713021);
-
-    //   await expect(
-    //     instanceOne.connect(owner).withdrawCampaignFunds()
-    //   ).to.be.revertedWith("you not the owner");
-    // });
-
     it("Should be able to get the number of unique donors", async function () {
       const { instanceOne, amountToDeposit, otherAccount, someOtherAccount } =
         await loadFixture(setUpContractUtils);
