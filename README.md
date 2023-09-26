@@ -1,13 +1,7 @@
-# Sample Hardhat Project
+# Creating a Decentralized Crowd Funding Contract with Solidity
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+To learn how to create a decentralized crowd funding contract you can read this blog post 
+to understand how to do it.
 
-Try running some of the following tasks:
+[Creating a Decentralised Crowd Funding Contract with Solidity](https://blog.developerdao.com/creating-a-decentralised-crowd-funding-contract-with-solidity)
 
-```shell
-npx hardhat help
-npx hardhat test
-GAS_REPORT=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
-```
